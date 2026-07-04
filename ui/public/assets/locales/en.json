@@ -1188,7 +1188,9 @@
     "booting_hint": "Booting up. Give it a sec...",
     "file_management_hint": "File management is available. Start the server for console, players and worlds.",
     "starting_short": "Starting…",
-    "start_server": "Start server"
+    "start_server": "Start server",
+    "restart_button": "Restart",
+    "shutdown_button": "Shutdown"
   },
   "titlebar": {
     "minimize": "Minimize",
