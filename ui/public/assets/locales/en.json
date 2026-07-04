@@ -1190,7 +1190,11 @@
     "starting_short": "Starting…",
     "start_server": "Start server",
     "restart_button": "Restart",
-    "shutdown_button": "Shutdown"
+    "restart_confirm_title": "Restart Server",
+    "restart_confirm_description": "do you realy want to restart the server?",
+    "shutdown_button": "Shutdown", 
+    "shutdown_confirm_title": "Shutdown Server?",
+    "shutdown_confirm_description": "do you realy want to restart the server?"
   },
   "titlebar": {
     "minimize": "Minimize",
