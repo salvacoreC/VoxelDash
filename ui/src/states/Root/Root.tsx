@@ -22,10 +22,21 @@ import {getLocationByPath} from "@/states/Root/routes.tsx";
 import {useMasterAuth} from "@/contexts/MasterAuthContext.tsx";
 import {useServerSelection} from "@/contexts/ServerSelectionContext.tsx";
 import {isMasterMode} from "@/lib/RequestUtil.ts";
-import {SpinnerGapIcon, PlugsIcon, ArrowLeftIcon, ArrowsClockwiseIcon, PlayIcon} from "@phosphor-icons/react";
+import {SpinnerGapIcon, PlugsIcon, ArrowLeftIcon, ArrowsClockwiseIcon, PlayIcon, PowerIcon} from "@phosphor-icons/react";
 import {Button} from "@/components/ui/button.tsx";
 import {useState} from "react";
 import {toast} from "@/hooks/use-toast.ts";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {AuroraBackground} from "@/components/AuroraBackground.tsx";
 import {AnimatePresence, motion} from "motion/react";
 import {t} from "i18next";
@@ -132,6 +143,82 @@ const OfflineBanner = () => {
     );
 };
 
+const ServerControlButtons = () => {
+    const handleRestart = async () => {
+        await postRequest("action/reload");
+        toast({description: t("root.restart_triggered")});
+    };
+
+    const handleShutdown = async () => {
+        await postRequest("action/shutdown");
+        toast({description: t("root.shutdown_triggered")});
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-400"
+                    >
+                        <ArrowsClockwiseIcon className="h-4 w-4"/>
+                        {t("root.restart_button")}
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("root.restart_confirm_title")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("root.restart_confirm_description")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">{t("action.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRestart}
+                            className="rounded-xl bg-amber-500 text-white hover:bg-amber-500/90"
+                        >
+                            {t("root.restart_button")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                        <PowerIcon className="h-4 w-4"/>
+                        {t("root.shutdown_button")}
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("root.shutdown_confirm_title")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("root.shutdown_confirm_description")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">{t("action.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleShutdown}
+                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {t("root.shutdown_button")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    );
+};
+
 const RootLayout = () => {
     const {tokenValid, serverInfo} = useContext(ServerInfoContext)!;
     const location = useLocation();
@@ -142,7 +229,7 @@ const RootLayout = () => {
             <Sidebar/>
             <SidebarInset className="isolate flex flex-col max-h-[var(--app-vh)] md:max-h-[calc(var(--app-vh)_-_1rem)] overflow-hidden">
                 <AuroraBackground/>
-                <header className="flex h-16 shrink-0 items-center gap-2">
+                <header className="flex h-16 shrink-0 items-center gap-2 justify-between">
                     <div className="flex items-center gap-2 px-4">
                         <SidebarTrigger className="-ml-1"/>
                         <Separator orientation="vertical" className="mr-2 h-4"/>
@@ -157,6 +244,9 @@ const RootLayout = () => {
                                 </BreadcrumbItem>
                             </BreadcrumbList>
                         </Breadcrumb>
+                    </div>
+                    <div className="px-4">
+                      <ServerControlButtons/>
                     </div>
                 </header>
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
