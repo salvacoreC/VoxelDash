@@ -1,108 +1,132 @@
-import {createContext, ReactNode, useContext, useEffect, useState} from "react";
-import {getActiveServerId, masterDelete, masterJson, masterPost, setActiveServerId} from "@/lib/RequestUtil.ts";
-import {useMasterAuth} from "@/contexts/MasterAuthContext.tsx";
-import {t} from "i18next";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { getActiveServerId, masterDelete, masterJson, masterPost, setActiveServerId } from "@/lib/RequestUtil.ts";
+import { useMasterAuth } from "@/contexts/MasterAuthContext.tsx";
+import { t } from "i18next";
 
 export interface ManagedServer {
-    id: string;
-    name: string;
-    software: string;
-    mcVersion?: string;
-    build?: string;
-    gamePort?: number;
-    javaMajor?: number;
-    memoryMb?: number;
-    status: "installing" | "install_failed" | "offline" | "starting" | "online";
-    createdAt?: string;
+  id: string;
+  name: string;
+  software: string;
+  mcVersion?: string;
+  build?: string;
+  gamePort?: number;
+  javaMajor?: number;
+  memoryMb?: number;
+  status: "installing" | "install_failed" | "offline" | "starting" | "online";
+  createdAt?: string;
 }
 
 interface CreatePayload {
-    name: string;
-    software: string;
-    mcVersion: string;
-    memoryMb?: number;
+  name: string;
+  software: string;
+  mcVersion: string;
+  memoryMb?: number;
 }
 
 interface ServerSelectionContextType {
-    servers: ManagedServer[];
-    loading: boolean;
-    activeServerId: string | null;
-    activeServer: ManagedServer | null;
-    refresh: () => Promise<ManagedServer[]>;
-    selectServer: (id: string | null) => void;
-    createServer: (payload: CreatePayload) => Promise<ManagedServer>;
-    startServer: (id: string) => Promise<void>;
-    stopServer: (id: string) => Promise<void>;
-    deleteServer: (id: string) => Promise<void>;
+  servers: ManagedServer[];
+  loading: boolean;
+  activeServerId: string | null;
+  activeServer: ManagedServer | null;
+  refresh: () => Promise<ManagedServer[]>;
+  selectServer: (id: string | null) => void;
+  createServer: (payload: CreatePayload) => Promise<ManagedServer>;
+  startServer: (id: string) => Promise<void>;
+  stopServer: (id: string) => Promise<void>;
+  restartServer: (id: string) => Promise<void>;
+  deleteServer: (id: string) => Promise<void>;
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export const ServerSelectionContext = createContext<ServerSelectionContextType | undefined>(undefined);
 
 export const useServerSelection = () => useContext(ServerSelectionContext)!;
 
-export const ServerSelectionProvider = ({children}: { children: ReactNode }) => {
-    const {authenticated} = useMasterAuth();
-    const [servers, setServers] = useState<ManagedServer[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [activeServerId, setActiveId] = useState<string | null>(getActiveServerId());
+export const ServerSelectionProvider = ({ children }: { children: ReactNode }) => {
+  const { authenticated } = useMasterAuth();
+  const [servers, setServers] = useState<ManagedServer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeServerId, setActiveId] = useState<string | null>(getActiveServerId());
 
-    const refresh = async () => {
-        const data = await masterJson("servers");
-        const list: ManagedServer[] = data.servers || [];
-        setServers(list);
-        setLoading(false);
-        return list;
-    };
+  const refresh = async () => {
+    const data = await masterJson("servers");
+    const list: ManagedServer[] = data.servers || [];
+    setServers(list);
+    setLoading(false);
+    return list;
+  };
 
-    const selectServer = (id: string | null) => {
-        setActiveServerId(id);
-        setActiveId(id);
-    };
+  const selectServer = (id: string | null) => {
+    setActiveServerId(id);
+    setActiveId(id);
+  };
 
-    const createServer = async (payload: CreatePayload): Promise<ManagedServer> => {
-        const res = await masterPost("servers", payload);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || t("context.create_failed"));
-        await refresh();
-        return data.server;
-    };
+  const createServer = async (payload: CreatePayload): Promise<ManagedServer> => {
+    const res = await masterPost("servers", payload);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || t("context.create_failed"));
+    await refresh();
+    return data.server;
+  };
 
-    const action = async (verb: string, id: string) => {
-        const res = await masterPost(`servers/${id}/${verb}`);
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || t(`context.action_failed.${verb}`));
-        }
-        await refresh();
-    };
+  const action = async (verb: string, id: string) => {
+    const res = await masterPost(`servers/${id}/${verb}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || t(`context.action_failed.${verb}`));
+    }
+    await refresh();
+  };
 
-    const startServer = (id: string) => action("start", id);
-    const stopServer = (id: string) => action("stop", id);
-    const deleteServer = async (id: string) => {
-        const res = await masterDelete(`servers/${id}`);
-        if (!res.ok) throw new Error(t("context.delete_failed"));
-        if (getActiveServerId() === id) selectServer(null);
-        await refresh();
-    };
+  const startServer = (id: string) => action("start", id);
+  const stopServer = (id: string) => action("stop", id);
+  const restartServer = async (id: string) => {
+    action("stop", id);
 
-    useEffect(() => {
-        if (!authenticated) {
-            setServers([]);
-            setLoading(false);
-            return;
-        }
-        refresh().catch(() => setLoading(false));
-        const interval = setInterval(() => refresh().catch(() => {}), 4000);
-        return () => clearInterval(interval);
-    }, [authenticated]);
+    // checks if server is offline
+    while (true) {
+      const serverList = await refresh()
+      const foundServer = serverList.find(server => server.id === id)
 
-    const activeServer = servers.find((s) => s.id === activeServerId) || null;
+      if (foundServer?.status === "offline") {
+        break
+      }
 
-    return (
-        <ServerSelectionContext.Provider
-            value={{servers, loading, activeServerId, activeServer, refresh, selectServer, createServer,
-                startServer, stopServer, deleteServer}}>
-            {children}
-        </ServerSelectionContext.Provider>
-    );
+      await delay(1000) // waits 1sek 
+    }
+
+    action("start", id);
+  };
+  const deleteServer = async (id: string) => {
+    const res = await masterDelete(`servers/${id}`);
+    if (!res.ok) throw new Error(t("context.delete_failed"));
+    if (getActiveServerId() === id) selectServer(null);
+    await refresh();
+  };
+
+  useEffect(() => {
+    if (!authenticated) {
+      setServers([]);
+      setLoading(false);
+      return;
+    }
+    refresh().catch(() => setLoading(false));
+    const interval = setInterval(() => refresh().catch(() => { }), 4000);
+    return () => clearInterval(interval);
+  }, [authenticated]);
+
+  const activeServer = servers.find((s) => s.id === activeServerId) || null;
+
+  return (
+    <ServerSelectionContext.Provider
+      value={{
+        servers, loading, activeServerId, activeServer, refresh, selectServer, createServer,
+        startServer, stopServer, restartServer, deleteServer
+      }}>
+      {children}
+    </ServerSelectionContext.Provider>
+  );
 };

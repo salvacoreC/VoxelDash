@@ -23,7 +23,7 @@ import { toast } from "@/hooks/use-toast.ts";
 import CreateServerDialog from "@/states/Servers/CreateServer.tsx";
 import {
   PlusIcon, PlayIcon, StopIcon, ArrowCounterClockwiseIcon, DotsThreeIcon, TrashIcon, TerminalWindowIcon,
-  HardDrivesIcon, SpinnerGapIcon, GlobeSimpleIcon, CopyIcon, LinkBreakIcon,
+  HardDrivesIcon, GlobeSimpleIcon, CopyIcon, LinkBreakIcon,
 } from "@phosphor-icons/react";
 
 const SoftwareMark = ({ software }: { software: string }) => {
@@ -66,11 +66,17 @@ const copy = (text: string) => navigator.clipboard.writeText(text).then(
   () => toast({ description: t("servers.copy_failed"), variant: "destructive" })
 );
 
-const ServerActionButtons = (isOnline: bool) => {
+const ServerActionButtons = ({ isOnline, serverId }: { isOnline: boolean, serverId: string }) => {
+  const { startServer, stopServer, restartServer } = useServerSelection();
   return (
-    <div className="flex items-center gap-2 pl-4">
+    <div className="flex items-center gap-2 pl-4" onClick={(e) => e.stopPropagation()}>
       {isOnline ? (
-        <Button variant="destructive" size="sm" className="gap-1.5">
+        <Button
+          variant="destructive"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => stopServer(serverId)}
+        >
           <StopIcon className="h-4 w-4" />
           Stop
         </Button>
@@ -79,17 +85,23 @@ const ServerActionButtons = (isOnline: bool) => {
           variant="outline"
           size="sm"
           className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+          onClick={() => startServer(serverId)}
         >
           <PlayIcon className="h-4 w-4" />
           Start
         </Button>
       }
 
-      <Button variant="secondary" size="sm" className="gap-1.5">
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 border-orange-500/40 text-orange-600 hover:bg-orange-500/10 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-400"
+        onClick={() => restartServer(serverId)}
+      >
         <ArrowCounterClockwiseIcon className="h-4 w-4" />
-        Reload
+        Restart
       </Button>
-    </div>
+    </div >
   )
 }
 
@@ -104,14 +116,13 @@ const ServerRow = ({ server, index, onLog, tunnel, playitLinked, canForward, onF
   onRemoveForward: (tunnelId: string) => Promise<void>;
 }) => {
   const meta = softwareMeta(server.software);
-  const { selectServer, startServer, stopServer, deleteServer } = useServerSelection();
+  const { selectServer, deleteServer } = useServerSelection();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isOnline = server.status === "online";
   const isBusy = server.status === "installing" || server.status === "starting";
-  const canStart = server.status === "offline" || server.status === "install_failed";
   const canOpen = isOnline || server.status === "offline";
 
   const run = async (fn: () => Promise<void>) => {
@@ -165,7 +176,10 @@ const ServerRow = ({ server, index, onLog, tunnel, playitLinked, canForward, onF
         <Stat label={t("servers.stat.build")} value={server.build || "-"} />
       </div>
 
-      <ServerActionButtons isOnline={isOnline}></ServerActionButtons>
+      <ServerActionButtons
+        isOnline={isOnline}
+        serverId={server.id}
+      ></ServerActionButtons>
 
       <div className="flex shrink-0 flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
@@ -237,7 +251,9 @@ const LogDialog = ({ server, onClose }: { server: ManagedServer | null; onClose:
       try {
         const data = await masterJson(`servers/${server.id}`);
         if (active) setLog(data.log || []);
-      } catch { }
+      } catch {
+        //TODO add catch
+      }
     };
     poll();
     const interval = setInterval(poll, 1500);
