@@ -1,20 +1,40 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { motion, type HTMLMotionProps } from "motion/react"
 
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement> & { containerClassName?: string }
 >(({ className, containerClassName, ...props }, ref) => (
-  <div className={cn("relative w-full overflow-auto", containerClassName)}>
+  <motion.div
+    layout
+    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    className={cn("relative z-10 w-full overflow-auto rounded-xl border bg-card", containerClassName)}
+  >
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />
-  </div>
+  </motion.div>
 ))
 Table.displayName = "Table"
+
+const TableToolbar = React.forwardRef<
+  HTMLDivElement,
+  HTMLMotionProps<"div">
+>(({ className, ...props }, ref) => (
+  <motion.div
+    ref={ref}
+    initial={{ opacity: 0, y: 60, scale: 0.99 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+    className={cn("flex items-center h-13 gap-5 pt-3 pb-5 pl-3 pr-3 rounded-t-xl relative z-0 -mb-2 bg-gradient-to-b from-muted to-muted/40", className)}
+    {...props}
+  />
+))
+TableToolbar.displayName = "TableToolbar"
 
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
@@ -30,7 +50,7 @@ const TableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("[&_tr:last-child]:border-0", className)}
+    className={cn(className)}
     {...props}
   />
 ))
@@ -43,7 +63,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "bg-muted/50 font-medium",
       className
     )}
     {...props}
@@ -58,7 +78,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className
     )}
     {...props}
@@ -110,6 +130,7 @@ TableCaption.displayName = "TableCaption"
 
 export {
   Table,
+  TableToolbar,
   TableHeader,
   TableBody,
   TableFooter,

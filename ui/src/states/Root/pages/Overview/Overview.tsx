@@ -206,11 +206,6 @@ const Overview = () => {
     return (
         <div className="flex flex-col flex-1 p-4 md:p-6 pt-0 min-h-0 overflow-hidden">
             <div className="flex items-center justify-end mb-4 shrink-0">
-                <div className="flex items-center justify-start">
-                  <Button>
-                  {t("button.restart")}
-                  </Button>
-                </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
