@@ -1,0 +1,85 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    working_dir: /app/ui
+
+    volumes:
+      - .:/app:z
+      - node_modules:/app/ui/node_modules
+      - pnpm-store:/root/.local/share/pnpm/store
+
+    command: >
+      sh -c "
+        pnpm install &&
+        pnpm dev --host 0.0.0.0
+      "
+
+    ports:
+      - "5173:5173"
+
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+
+    working_dir: /app
+
+    volumes:
+      - .:/app:z
+      - maven-cache:/root/.m2
+
+    command: >
+      bash -c '
+        build_and_run() {
+          echo ""
+          echo "======================================"
+          echo " Building Backend"
+          echo "======================================"
+
+          mvn -q -f modules/api/pom.xml install -DskipTests || return 1
+
+          mvn -q \
+            -f modules/vanilla/pom.xml \
+            package \
+            -DskipTests \
+            -Dskip.webui=true || return 1
+
+          mkdir -p modules/vanilla/run
+
+          echo "eula=true" > modules/vanilla/run/eula.txt
+
+          JAR=$(find modules/vanilla/target \
+            -name "voxeldash-vanilla-*.jar" \
+            ! -name "*sources*" \
+            | head -n1)
+
+          cd modules/vanilla/run
+
+          echo "Starting $JAR"
+
+          java -jar "$JAR"
+        }
+
+        export -f build_and_run
+
+        build_and_run &
+
+        while true; do
+          find modules -type f \
+            | entr -r bash -c build_and_run
+        done
+      '
+
+    ports:
+      - "7867:7867"
+
+volumes:
+  node_modules:
+  pnpm-store:
+  maven-cache:

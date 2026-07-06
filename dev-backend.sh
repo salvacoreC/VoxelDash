@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_ROOT="$HOME/dev/VoxelDash"
+PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 RUN_DIR="$PROJECT_ROOT/modules/vanilla/run"
 
 # Wird von watchexec bei jeder Änderung neu aufgerufen (das ganze Skript läuft neu)
@@ -23,8 +23,8 @@ cd "$RUN_DIR"
 # (Mit dem Ausführen dieses Skripts akzeptierst du selbst die Mojang EULA:
 #  https://aka.ms/MinecraftEULA)
 if [ ! -f eula.txt ] || ! grep -q "^eula=true" eula.txt; then
-    echo "📜 Akzeptiere Minecraft EULA (eula.txt)..."
-    echo "eula=true" > eula.txt
+  echo "📜 Akzeptiere Minecraft EULA (eula.txt)..."
+  echo "eula=true" >eula.txt
 fi
 
 JAR=$(ls "$PROJECT_ROOT"/modules/vanilla/target/voxeldash-vanilla-*.jar | grep -v sources | head -n1)
